@@ -1,0 +1,28 @@
+# oc apply -f - <<EOF
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: disk-uploader-pipeline-run-
+spec:
+  pipelineRef:
+    name: disk-uploader-pipeline
+  workspaces:
+    - name: data01
+      secret:
+        secretName: disk-virt-customize-workspace-credentials
+  params:
+    - name: REDHAT_USERNAME
+      value: <VALUE> # test
+    - name: IMAGE_DESTINATION
+      value: <VALUE> # quay.io/boukhano/example-vm-exported:latest
+    - name: SECRET_NAME
+      value: disk-uploader-credentials
+
+  # This resolves an error due to guestfish lacking permission access to the disk img file
+  taskRunSpecs:
+    - pipelineTaskName: disk-virt-customize
+      podTemplate:
+        securityContext:
+          fsGroup: 107
+          runAsUser: 107
+# EOF

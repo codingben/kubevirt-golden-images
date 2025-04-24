@@ -1,0 +1,20 @@
+# oc apply -f - <<EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-sample
+  namespace: openshift-gitops
+spec:
+  destination:
+    namespace: sample-app
+    server: https://kubernetes.default.svc
+  source:
+    path: argocd-manifests
+    repoURL: https://github.com/codingben/kubevirt-golden-images
+    targetRevision: HEAD
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+# EOF

@@ -1,0 +1,45 @@
+# oc apply -f - <<EOF
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel-9-beige
+  namespace: sample-app
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: rhel-9-beige
+      spec:
+        sourceRef:
+          kind: DataSource
+          name: example-vm-exported
+          namespace: sample-app
+        storage:
+          resources: {}
+  instancetype:
+    name: u1.medium
+  preference:
+    name: rhel.9
+  runStrategy: Always
+  template:
+    spec:
+      domain:
+        devices:
+          interfaces:
+            - masquerade: {}
+              name: default
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - dataVolume:
+            name: rhel-9-beige
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              chpasswd:
+                expire: false
+              password: idvv-ykvl-1x6j
+              user: rhel
+          name: cloudinitdisk
+# EOF

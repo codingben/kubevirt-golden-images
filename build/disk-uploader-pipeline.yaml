@@ -1,0 +1,151 @@
+# oc apply -f - <<EOF
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: disk-uploader-pipeline
+spec:
+  workspaces:
+    - name: data01
+  params:
+    - name: REDHAT_USERNAME
+      description: "Red Hat username to be used in RHEL subscription"
+      type: string
+    - name: IMAGE_DESTINATION
+      description: "Destination of the image in container registry"
+      type: string
+    - name: SECRET_NAME
+      description: "Name of the secret which holds credential for container registry"
+      type: string
+  tasks:
+    # Step 1: Imports base RHEL image into a PresistentVolumeClaim (PVC)
+    - name: import-rhel-image
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: redhat-tekton-tasks
+          - name: kind
+            value: task
+          - name: name
+            value: modify-data-object
+          - name: version
+            value: ">=4.18.0"
+      params:
+        - name: manifest
+          value: |-
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              generateName: rhel-9-5-guest-dv-
+              annotations:
+                cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+            spec:
+              source:
+                registry:
+                  pullMethod: node
+                  url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.5-1734523887"
+              storage:
+                volumeMode: Filesystem
+                resources:
+                  requests:
+                    storage: 10Gi
+        - name: waitForSuccess
+          value: true
+        - name: allowReplace
+          value: true
+        - name: setOwnerReference
+          value: true
+
+    # Step 2: Customizes image (e.g. install git, register with Red Hat)
+    - name: disk-virt-customize
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: redhat-tekton-tasks
+          - name: kind
+            value: task
+          - name: name
+            value: disk-virt-customize
+          - name: version
+            value: ">=4.18.0"
+      runAfter:
+        - import-rhel-image
+      workspaces:
+        - name: data01
+          workspace: data01
+      params:
+        - name: pvc
+          value: "$(tasks.import-rhel-image.results.name)"
+        - name: virtCommands
+          value: |-
+            sm-credentials $(params.REDHAT_USERNAME):file:/data01/password
+            sm-register
+            sm-attach auto
+            install git
+            sm-unregister
+
+    # Step 3: Copies the customized disk to a new PresistentVolumeClaim (PVC)
+    - name: copy-rhel-image
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: redhat-tekton-tasks
+          - name: kind
+            value: task
+          - name: name
+            value: modify-data-object
+          - name: version
+            value: ">=4.18.0"
+      runAfter:
+        - disk-virt-customize
+      params:
+        - name: manifest
+          value: |-
+            apiVersion: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            metadata:
+              generateName: rhel-9-5-copied-guest-dv-
+              annotations:
+                cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+            spec:
+              source:
+                pvc:
+                  name: "$(tasks.import-rhel-image.results.name)"
+                  namespace: "$(tasks.import-rhel-image.results.namespace)"
+              storage: {}
+        - name: waitForSuccess
+          value: true
+        - name: allowReplace
+          value: true
+        - name: setOwnerReference
+          value: true
+
+    # Step 4: Uploads the image to a container registry
+    - name: disk-uploader
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: redhat-tekton-tasks
+          - name: kind
+            value: task
+          - name: name
+            value: disk-uploader
+          - name: version
+            value: ">=4.18.0"
+      runAfter:
+        - copy-rhel-image
+      params:
+        - name: EXPORT_SOURCE_KIND
+          value: "pvc"
+        - name: EXPORT_SOURCE_NAME
+          value: "$(tasks.copy-rhel-image.results.name)"
+        - name: VOLUME_NAME
+          value: "$(tasks.copy-rhel-image.results.name)"
+        - name: IMAGE_DESTINATION
+          value: "$(params.IMAGE_DESTINATION)"
+        - name: SECRET_NAME
+          value: "$(params.SECRET_NAME)"
+# EOF
