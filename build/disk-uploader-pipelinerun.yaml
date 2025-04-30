@@ -12,9 +12,9 @@ spec:
         secretName: disk-virt-customize-workspace-credentials
   params:
     - name: REDHAT_USERNAME
-      value: <VALUE> # test
+      value: <VALUE>
     - name: IMAGE_DESTINATION
-      value: <VALUE> # quay.io/boukhano/example-vm-exported:latest
+      value: <VALUE> # e.g. quay.io/rhel9/rhel-guest-custom:9.5
     - name: SECRET_NAME
       value: disk-uploader-credentials
 

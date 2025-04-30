@@ -7,14 +7,14 @@ metadata:
 spec:
   garbageCollect: Outdated
   schedule: 55 2/12 * * *
-  managedDataSource: example-vm-exported
+  managedDataSource: rhel-guest-custom
   template:
     metadata: {}
     spec:
       source:
         registry:
           pullMethod: node
-          url: docker://quay.io/boukhano/example-vm-exported:latest
+          url: docker://quay.io/boukhano/rhel-guest-custom:9.5
       storage:
         resources:
           requests:

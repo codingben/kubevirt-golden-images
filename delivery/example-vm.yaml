@@ -11,7 +11,7 @@ spec:
       spec:
         sourceRef:
           kind: DataSource
-          name: example-vm-exported
+          name: rhel-guest-custom
           namespace: sample-app
         storage:
           resources: {}
@@ -23,13 +23,7 @@ spec:
   template:
     spec:
       domain:
-        devices:
-          interfaces:
-            - masquerade: {}
-              name: default
-      networks:
-        - name: default
-          pod: {}
+        devices: {}
       volumes:
         - dataVolume:
             name: rhel-9-beige
