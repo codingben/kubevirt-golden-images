@@ -1,0 +1,23 @@
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+spec:
+  dataImportCronTemplates:
+  - metadata:
+      name: rhel9-custom-image-cron
+      annotations:
+        cdi.kubevirt.io/storage.bind.immediate.requested: "true"
+    spec:
+      schedule: 55 2/12 * * *
+      template:
+        spec:
+          source:
+            registry:
+              url: docker://quay.io/boukhano/rhel-guest-custom:9.5
+          storage:
+            resources:
+              requests:
+                storage: 30Gi
+      garbageCollect: Outdated
+      managedDataSource: rhel-guest-custom
