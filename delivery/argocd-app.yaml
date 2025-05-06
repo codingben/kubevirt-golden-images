@@ -1,20 +1,33 @@
 # oc apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: ApplicationSet
 metadata:
   name: argocd-sample
   namespace: openshift-gitops
 spec:
-  destination:
-    namespace: openshift-cnv
-    server: https://kubernetes.default.svc
-  source:
-    path: argocd-manifests
-    repoURL: https://github.com/codingben/kubevirt-golden-images
-    targetRevision: HEAD
-  project: default
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: false
+  generators:
+    - list:
+        elements:
+          - name: in-cluster
+            namespace: openshift-cnv
+            server: https://kubernetes.default.svc
+          - name: external-cluster
+            namespace: openshift-cnv
+            server: https://1.2.3.4:6443 # Example external API server
+  template:
+    metadata:
+      name: argocd-sample-{{name}}
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/codingben/kubevirt-golden-images
+        targetRevision: HEAD
+        path: argocd-manifests
+      destination:
+        server: "{{server}}"
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: false
 # EOF
